@@ -5,20 +5,27 @@ from datetime import datetime
 from pathlib import Path
 import imghdr
 
-# Create a new directory to house the newly stamped images
+
+# Check if required directory exists, if not, create it!
+def dirCheckMake(dirPath, dirName):
+	if not Path(dirPath).is_dir():
+		dirPath.mkdir()
+		print(f'Directory {dirName} Created\n')
+	else:
+		print(f'Directory {dirName} already exists\n')
+	
+
+# Create new directory to house the newly stamped images
 outputDirName = 'newly_stamped_images'
 outputDir = Path.cwd() / outputDirName
-if not Path(outputDir).is_dir():
-	outputDir.mkdir()
-	print(f'Directory {outputDirName} Created\n')
-else:
-	print(f'Directory {outputDirName} already exists\n')
+dirCheckMake(outputDir, outputDirName)
 
 
 # We can user getter function to get values from specific IIM codes
 # https://iptc.org/std/photometadata/specification/IPTC-PhotoMetadata
 def get_caption():
 	return iptc.get((2,5)).decode()
+
 
 def add_margin(pil_img, top, right, bottom, left, color):
 	width, height = pil_img.size
@@ -42,6 +49,7 @@ def add_caption(pil_img2, caption):
 		result = draw.text(((width-text_width)/2, height-200), caption, (0,0,0), font=font)
 	return result
 
+
 def get_date(pil_img2):
 	for DateTimeOriginal in ExifTags.TAGS.keys():
 		if ExifTags.TAGS[DateTimeOriginal]=='DateTimeOriginal':
@@ -50,8 +58,9 @@ def get_date(pil_img2):
 	exif=dict(pil_img2._getexif().items())
 	date = str(exif[DateTimeOriginal])
 	my_date = datetime.strptime(date, "%Y:%m:%d %H:%M:%S")
-	printed_date = str(my_date.strftime('%B')) + ' ' + str(my_date.year)
+	printed_date = f'{str(my_date.strftime("%B"))} {str(my_date.year)}'
 	return printed_date
+	
 	
 def add_date(pil_img2, date):
 	date = str(date)
@@ -62,11 +71,13 @@ def add_date(pil_img2, date):
 	result = draw.text(((width-text_width)/2, height-80), date, (0,0,0), font=font)
 	return result
 
-sourcedir = Path.cwd()
 
-for subDir in Path(sourcedir).iterdir():
+
+
+
+for subDir in Path(Path.cwd()).iterdir():
 	if subDir.is_dir():
-		# Skip over pre-existing newly_stamped_images folder
+#		Skip over pre-existing newly_stamped_images folder
 		if subDir.name == outputDirName:
 			pass
 		else:
@@ -75,24 +86,21 @@ for subDir in Path(sourcedir).iterdir():
 Processing images from subdirectory "{subDir.name}"
 ############################################################
 ''')
+			
 			outputSubDir = outputDir / subDir.name
-	#		print(outputSubDir)
+#			print(outputSubDir)
 			
 			try:
-				if Path(outputSubDir).exists():
-					print(f'Output subdirectory {outputSubDir} already exists\n')
-				else:
-					Path(outputSubDir).mkdir()
-					print(f'Output subdirectory {outputSubDir} Created\n')
+				dirCheckMake(outputSubDir, subDir.name)
 			except:
 				print(f'subdirectory creation failed')
 	
 			try:
 				for filename in Path(subDir).iterdir():
 					imageType = imghdr.what(filename)
-#					print(imageType)                      # prints identified file type for all files within subDir
+# 					Optionally print identified file type for all files within subDir
+#					print(imageType)
 					if imageType == 'jpeg':
-#						print(imageType)                  # prints identified file type for all jpegs
 						try:
 							im = Image.open(filename)
 						except:
@@ -111,6 +119,7 @@ This image has no iptc info, using subdirectory name as caption
 Caption: {subDir.name}
 ++++++++++++++++++++++++++++++++++++++++
 ''')
+							
 
 		
 						try:
@@ -130,7 +139,7 @@ Caption: {subDir.name}
 							print(e)
 		
 						try:
-							outputFilename = filename.stem + '-stamped.jpg'
+							outputFilename = f'{filename.stem}-stamped.jpg'
 							img_new.save(outputSubDir / outputFilename, quality=95)
 							print(f'\n')
 						except Exception as e:
