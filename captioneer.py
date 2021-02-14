@@ -1,40 +1,18 @@
 #!/usr/bin/env python3
 
 from PIL import Image, ImageDraw, ImageFont, IptcImagePlugin, ExifTags
-import os
 from datetime import datetime
 from pathlib import Path
 import imghdr
 
-# This script expects the following folder structure:
-# +-- root folder
-#     +-- this script.py
-#     +-- folder 1
-#         +-- picture 1.jpg
-#         +-- picture 2.jpg
-#         +-- picture 3.jpg
-#     +-- folder 2
-#         +-- picture 1.jpg
-#         +-- picture 2.jpg
-#         +-- picture 3.jpg
-#     +-- folder 3
-#         +-- picture 1.jpg
-#         +-- picture 2.jpg
-#         +-- picture 3.jpg
-
-
-working_directory = Path.cwd()
-
 # Create a new directory to house the newly stamped images
-dirName = 'newly_stamped_images'
-if not os.path.exists(dirName):
-	os.mkdir(dirName)
-	print('Directory', dirName, 'Created' + '\n')
+outputDirName = 'newly_stamped_images'
+outputDir = Path.cwd() / outputDirName
+if not Path(outputDir).is_dir():
+	outputDir.mkdir()
+	print(f'Directory {outputDirName} Created\n')
 else:
-	print('Directory', dirName, 'already exists' + '\n')
-
-sourcedir = working_directory
-outputdir = Path.cwd() / dirName
+	print(f'Directory {outputDirName} already exists\n')
 
 
 # We can user getter function to get values from specific IIM codes
@@ -84,37 +62,41 @@ def add_date(pil_img2, date):
 	result = draw.text(((width-text_width)/2, height-80), date, (0,0,0), font=font)
 	return result
 
+sourcedir = Path.cwd()
+
 for subDir in Path(sourcedir).iterdir():
 	if subDir.is_dir():
-		if subDir.name == dirName:
+		# Skip over pre-existing newly_stamped_images folder
+		if subDir.name == outputDirName:
 			pass
 		else:
-			print(f'''############################################################
+			print(f'''
+############################################################
 Processing images from subdirectory "{subDir.name}"
 ############################################################
 ''')
-			outputSubDir = outputdir / subDir.name
+			outputSubDir = outputDir / subDir.name
 	#		print(outputSubDir)
 			
 			try:
 				if Path(outputSubDir).exists():
-					print('Output subdirectory', outputSubDir, 'already exists' + '\n')
+					print(f'Output subdirectory {outputSubDir} already exists\n')
 				else:
 					Path(outputSubDir).mkdir()
-					print('Output subdirectory', outputSubDir, 'Created' + '\n')
+					print(f'Output subdirectory {outputSubDir} Created\n')
 			except:
-				print('subdirectory creation failed')
+				print(f'subdirectory creation failed')
 	
 			try:
 				for filename in Path(subDir).iterdir():
 					imageType = imghdr.what(filename)
-	#				print(imageType)                     # prints identified file type for all files within subDir
+#					print(imageType)                      # prints identified file type for all files within subDir
 					if imageType == 'jpeg':
-	#					print(imageType)                  prints identified file type for all jpegs
+#						print(imageType)                  # prints identified file type for all jpegs
 						try:
 							im = Image.open(filename)
 						except:
-							print('Open image', filename, 'failed')
+							print(f'Open image {filename} failed')
 		
 						try:
 							iptc = IptcImagePlugin.getiptcinfo(im)
@@ -123,37 +105,42 @@ Processing images from subdirectory "{subDir.name}"
 						except:
 							caption = subDir.name
 							print(f'{filename.name}')
-							print(f'''++++++++++++++++++++++++++++++++++++++++
+							print(f'''
+++++++++++++++++++++++++++++++++++++++++
 This image has no iptc info, using subdirectory name as caption
 Caption: {subDir.name}
-++++++++++++++++++++++++++++++++++++++++''')
+++++++++++++++++++++++++++++++++++++++++
+''')
 
 		
 						try:
 							date = get_date(im)
 							print(f'Date: {date}')
-						except:
-							print("This image has no Date")
+						except Exception as e:
+							print(f'This image has no Date')
+							print(e)
 							date = ''
 		
 						try:
 							img_new = add_margin(im, 0, 0, 200, 0, (255,255,255))
 							add_caption(img_new, caption)
 							add_date(img_new, date)
-						except:
-							print('margin/caption/date failure')
+						except Exception as e:
+							print(f'margin/caption/date failure')
+							print(e)
 		
 						try:
 							outputFilename = filename.stem + '-stamped.jpg'
 							img_new.save(outputSubDir / outputFilename, quality=95)
-							print('\n')
+							print(f'\n')
 						except Exception as e:
 							print(e)
-							print('Adding border and filename to image', filename, 'failed')
+							print(f'Adding border and filename to image {filename} failed')
 			except:
 				pass
 
-print(f'''####################
+print(f'''
+####################
   PROCESS COMPLETE
 ####################
 ''')
