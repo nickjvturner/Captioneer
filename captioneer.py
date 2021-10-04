@@ -6,20 +6,32 @@ from pathlib import Path
 import imghdr
 
 
-# Check if required directory exists, if not, create it!
-def dirCheckMake(dirPath, dirName):
-	if not Path(dirPath).is_dir():
-		dirPath.mkdir()
-		print(f'Directory {dirName} Created\n')
+# Check if 'desired' directory exists, if not, create it!
+def dir_check_make(dir_path, dir_name):
+	if not Path(dir_path).is_dir():
+		dir_path.mkdir()
+		print(f'Directory {dir_name} Created\n')
 	else:
-		print(f'Directory {dirName} already exists\n')
+		print(f'Directory {dir_name} already exists\n')
 	
 
-# Create new directory to house the newly stamped images
-outputDirName = 'newly_stamped_images'
-outputDir = Path.cwd() / outputDirName
-dirCheckMake(outputDir, outputDirName)
+# Create an output directory for the 'newly stamped images'
+output_dir_name = 'newly_stamped_images'
+output_dir = Path.cwd() / output_dir_name
+dir_check_make(output_dir, output_dir_name)
 
+
+# Get source image dimensions
+def get_image_dimensions(pil_img):
+	width, height = pil_img.size
+	
+	desired_margin = int((height/10)+10)
+	desired_caption_font_size = int(desired_margin/2)
+	desired_date_font_size = int(desired_margin/4)
+	desired_date_y_value = int(desired_margin/2.5)
+	
+	return desired_margin, desired_caption_font_size, desired_date_font_size, desired_date_y_value
+	
 
 # We can user getter function to get values from specific IIM codes
 # https://iptc.org/std/photometadata/specification/IPTC-PhotoMetadata
@@ -36,17 +48,17 @@ def add_margin(pil_img, top, right, bottom, left, color):
 	return result
 	
 		
-def add_caption(pil_img2, caption):
+def add_caption(pil_img2, caption, desired_caption_font_size, desired_margin):
 	width, height = pil_img2.size
-	font = ImageFont.truetype("Avenir.ttc", 100)
+	font = ImageFont.truetype("Avenir.ttc", desired_caption_font_size)
 	draw = ImageDraw.Draw(pil_img2)
 	text_width, text_height = draw.textsize(caption, font=font)
 	if text_width > width:
-		font = ImageFont.truetype("Avenir.ttc", 100)
+		font = ImageFont.truetype("Avenir.ttc", desired_caption_font_size/2)
 		text_width, text_height = draw.textsize(caption, font=font)
-		result = draw.text((50, height-200), caption, (0,0,0), font=font)
+		result = draw.text(((width-text_width)/2, height-desired_margin), caption, (0,0,0), font=font)
 	else:
-		result = draw.text(((width-text_width)/2, height-200), caption, (0,0,0), font=font)
+		result = draw.text(((width-text_width)/2, height-desired_margin), caption, (0,0,0), font=font)
 	return result
 
 
@@ -62,45 +74,42 @@ def get_date(pil_img2):
 	return printed_date
 	
 	
-def add_date(pil_img2, date):
+def add_date(pil_img2, date, desired_date_y_value, desired_date_font_size):
 	date = str(date)
 	width, height = pil_img2.size
-	font = ImageFont.truetype("Avenir.ttc", 50)
+	font = ImageFont.truetype("Avenir.ttc", desired_date_font_size)
 	draw = ImageDraw.Draw(pil_img2)
 	text_width, text_height = draw.textsize(date, font=font)
-	result = draw.text(((width-text_width)/2, height-80), date, (0,0,0), font=font)
+	result = draw.text(((width-text_width)/2, height-desired_date_y_value), date, (0,0,0), font=font)
 	return result
 
 
-
-
-
-for subDir in Path(Path.cwd()).iterdir():
-	if subDir.is_dir():
+for sub_dir in Path(Path.cwd()).iterdir():
+	if sub_dir.is_dir():
 #		Skip over pre-existing newly_stamped_images folder
-		if subDir.name == outputDirName:
+		if sub_dir.name == output_dir_name:
 			pass
 		else:
 			print(f'''
 ############################################################
-Processing images from subdirectory "{subDir.name}"
+Processing images from subdirectory "{sub_dir.name}"
 ############################################################
 ''')
 			
-			outputSubDir = outputDir / subDir.name
+			output_sub_dir = output_dir / sub_dir.name
 #			print(outputSubDir)
 			
 			try:
-				dirCheckMake(outputSubDir, subDir.name)
+				dir_check_make(output_sub_dir, sub_dir.name)
 			except:
 				print(f'subdirectory creation failed')
 	
 			try:
-				for filename in Path(subDir).iterdir():
-					imageType = imghdr.what(filename)
+				for filename in Path(sub_dir).iterdir():
+					image_type = imghdr.what(filename)
 # 					Optionally print identified file type for all files within subDir
 #					print(imageType)
-					if imageType == 'jpeg':
+					if image_type == 'jpeg':
 						try:
 							im = Image.open(filename)
 						except:
@@ -111,17 +120,15 @@ Processing images from subdirectory "{subDir.name}"
 							caption = get_caption()
 							print(f'{filename.name} \nCaption: {caption}')
 						except:
-							caption = subDir.name
+							caption = sub_dir.name
 							print(f'{filename.name}')
 							print(f'''
 ++++++++++++++++++++++++++++++++++++++++
 This image has no iptc info, using subdirectory name as caption
-Caption: {subDir.name}
+Caption: {sub_dir.name}
 ++++++++++++++++++++++++++++++++++++++++
 ''')
-							
 
-		
 						try:
 							date = get_date(im)
 							print(f'Date: {date}')
@@ -129,18 +136,20 @@ Caption: {subDir.name}
 							print(f'This image has no Date')
 							print(e)
 							date = ''
-		
+						
+						desired_margin, desired_caption_font_size, desired_date_font_size, desired_date_y_value = get_image_dimensions(im)
+						
 						try:
-							img_new = add_margin(im, 0, 0, 200, 0, (255,255,255))
-							add_caption(img_new, caption)
-							add_date(img_new, date)
+							img_new = add_margin(im, 0, 0, desired_margin, 0, (255,255,255))
+							add_caption(img_new, caption, desired_caption_font_size, desired_margin)
+							add_date(img_new, date, desired_date_y_value, desired_date_font_size)
 						except Exception as e:
 							print(f'margin/caption/date failure')
 							print(e)
 		
 						try:
-							outputFilename = f'{filename.stem}-stamped.jpg'
-							img_new.save(outputSubDir / outputFilename, quality=95)
+							output_filename = f'{filename.stem}-stamped.jpg'
+							img_new.save(output_sub_dir / output_filename, quality=95)
 							print(f'\n')
 						except Exception as e:
 							print(e)
