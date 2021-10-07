@@ -39,6 +39,18 @@ def get_caption():
 	return iptc.get((2,5)).decode()
 
 
+def get_date(pil_img2):
+	for DateTimeOriginal in ExifTags.TAGS.keys():
+		if ExifTags.TAGS[DateTimeOriginal]=='DateTimeOriginal':
+			break
+		
+	exif=dict(pil_img2._getexif().items())
+	date = str(exif[DateTimeOriginal])
+	my_date = datetime.strptime(date, "%Y:%m:%d %H:%M:%S")
+	printed_date = f'{str(my_date.strftime("%B"))} {str(my_date.year)}'
+	return printed_date
+
+
 def add_margin(pil_img, top, right, bottom, left, color):
 	width, height = pil_img.size
 	new_width = width + right + left
@@ -54,25 +66,15 @@ def add_caption(pil_img2, caption, desired_caption_font_size, desired_margin):
 	draw = ImageDraw.Draw(pil_img2)
 	text_width, text_height = draw.textsize(caption, font=font)
 	if text_width > width:
-		font = ImageFont.truetype("Avenir.ttc", desired_caption_font_size/2)
-		text_width, text_height = draw.textsize(caption, font=font)
+		while text_width > (width - 500):
+			print('Text width too great for image, slimming', desired_caption_font_size)
+			desired_caption_font_size -= 2
+			font = ImageFont.truetype("Avenir.ttc", desired_caption_font_size)
+			text_width, text_height = draw.textsize(caption, font=font)
 		result = draw.text(((width-text_width)/2, height-desired_margin), caption, (0,0,0), font=font)
 	else:
 		result = draw.text(((width-text_width)/2, height-desired_margin), caption, (0,0,0), font=font)
-	return result
-
-
-def get_date(pil_img2):
-	for DateTimeOriginal in ExifTags.TAGS.keys():
-		if ExifTags.TAGS[DateTimeOriginal]=='DateTimeOriginal':
-			break
-			
-	exif=dict(pil_img2._getexif().items())
-	date = str(exif[DateTimeOriginal])
-	my_date = datetime.strptime(date, "%Y:%m:%d %H:%M:%S")
-	printed_date = f'{str(my_date.strftime("%B"))} {str(my_date.year)}'
-	return printed_date
-	
+	return result	
 	
 def add_date(pil_img2, date, desired_date_y_value, desired_date_font_size):
 	date = str(date)
@@ -122,21 +124,26 @@ Processing images from subdirectory "{sub_dir.name}"
 						except:
 							caption = sub_dir.name
 							print(f'{filename.name}')
-							print(f'''
-++++++++++++++++++++++++++++++++++++++++
-This image has no iptc info, using subdirectory name as caption
+							print(f'''+++++++++++++ NO IPTC DATA +++++++++++++
+I will use the subdirectory instead
 Caption: {sub_dir.name}
-++++++++++++++++++++++++++++++++++++++++
-''')
+++++++++++++++++++++++++++++++++++++++++''')
 
 						try:
 							date = get_date(im)
 							print(f'Date: {date}')
 						except Exception as e:
-							print(f'This image has no Date')
-							print(e)
-							date = ''
-						
+							print(f'''
+----------------------------------------
+---------- NO DATE AVAILABLE -----------
+----------------------------------------''')
+#							print('get_date error: ', e)
+							manual_date = input('''
+Manual date entry required!
+Enter date as you wish text to appear on stamped photo
+"Month Year", "January 2021" or "November 1980" (for example)
+Please enter date: ''')
+							date = str(manual_date)
 						desired_margin, desired_caption_font_size, desired_date_font_size, desired_date_y_value = get_image_dimensions(im)
 						
 						try:
@@ -150,7 +157,7 @@ Caption: {sub_dir.name}
 						try:
 							output_filename = f'{filename.stem}-stamped.jpg'
 							img_new.save(output_sub_dir / output_filename, quality=95)
-							print(f'\n')
+							print('\n')
 						except Exception as e:
 							print(e)
 							print(f'Adding border and filename to image {filename} failed')
