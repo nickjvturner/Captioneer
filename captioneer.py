@@ -67,7 +67,7 @@ def add_caption(pil_img2, caption, desired_caption_font_size, desired_margin):
 	draw = ImageDraw.Draw(pil_img2)
 	text_width, text_height = draw.textsize(caption, font=font)
 	if text_width > width:
-		while text_width > (width - 500):
+		while text_width > (width - 300):
 			print('Text width too great for image, slimming', desired_caption_font_size)
 			desired_caption_font_size -= 2
 			font = ImageFont.truetype("Avenir.ttc", desired_caption_font_size)
@@ -121,11 +121,10 @@ process_start_time = time.time()
 dir_check_make(output_dir, output_dir_name)
 
 for sub_dir in sorted(sub_dirs):
-			print(f'''
-#############################################################
-Processing images from subdirectory "{sub_dir.name}"
-#############################################################
-''')
+			print(
+				f'{"#" * ((len(str(sub_dir.name)))+38)}\n'
+				f'Processing images from subdirectory "{sub_dir.name}"\n'
+				f'{"#" * ((len(str(sub_dir.name)))+38)}\n')
 			output_sub_dir = output_dir / sub_dir.name
 #			print(outputSubDir)
 			
@@ -146,8 +145,8 @@ Processing images from subdirectory "{sub_dir.name}"
 				for filename in sorted(sub_dir_image_files):
 					try:
 						im = Image.open(filename)
-						print(f'{filename.name}\n{"-" * len(filename.name)}')
-						print(f'{process_iteration_counter} of {total_images}')
+						print(	f'{filename.name}\n{"-" * len(filename.name)}\n'
+								f'{process_iteration_counter} of {total_images}')
 						process_iteration_counter += 1
 					except Exception as e:
 						print(e)
@@ -160,25 +159,26 @@ Processing images from subdirectory "{sub_dir.name}"
 					except Exception as e:
 #							print(e)
 						caption = sub_dir.name
-						print(f'''{"+" * int((len(str(caption)))/2)} NO IPTC DATA {"+" * int((len(str(caption)))/2)}
-Using subdirectory name instead
-Caption: {sub_dir.name}
-{"+" * ((len(str(caption)))+14)}''')
+						print(
+							f'{"+" * (int((len(str(caption)))/2)-2)} NO IPTC DATA {"+" * (int((len(str(caption)))/2)-2)}\n'
+							f'Using subdirectory name instead\n'
+							f'Caption: {sub_dir.name}\n'
+							f'{"+" * ((len(str(caption)))+10)}\n')
 						
 					try:
 						date = get_date(im)
 						print(f'Date: {date}')
 					except Exception as e:
-						print(f'''
-------------------------------------------------------------
--------------------- NO DATE AVAILABLE ---------------------
-------------------------------------------------------------''')
+						print(
+							f'------------------------------------------------------------\n'
+							f'-------------------- NO DATE AVAILABLE ---------------------\n'
+							f'------------------------------------------------------------\n')
 #							print('get_date error: ', e)
-						manual_date = input('''
-Manual date entry required!
-Enter date as you wish text to appear on stamped photo
-"Month Year", "January 2021" or "November 1980" (for example)
-Please enter date: ''')
+						manual_date = input(
+							f'Manual date entry required!\n'
+							f'Enter date as you wish text to appear on stamped photo\n'
+							f'"Month Year", "January 2021" or "November 1980" (for example)\n'
+							f'Please enter date: ')
 						date = str(manual_date)
 					desired_margin, desired_caption_font_size, desired_date_font_size, desired_date_y_value = get_image_dimensions(im)
 					
