@@ -6,15 +6,9 @@ from pathlib import Path
 import imghdr
 import time
 
-# Configure variables
-output_dir_name = 'newly_stamped_images'
-output_dir = Path.cwd() / output_dir_name
-image_files = []
-sub_dirs = []
-process_iteration_counter = 1
-
-
 # Check if 'desired' directory exists, if not, create it!
+
+
 def dir_check_make(dir_path, dir_name):
     if not Path(dir_path).is_dir():
         dir_path.mkdir()
@@ -36,35 +30,36 @@ def get_image_dimensions(pil_img):
 
 # We can user getter function to get values from specific IIM codes
 # https://iptc.org/std/photometadata/specification/IPTC-PhotoMetadata
-def get_caption():
+def get_caption(image):
+    iptc = IptcImagePlugin.getiptcinfo(image)
     return iptc.get((2, 5)).decode()
 
 
-def get_date(pil_img2):
+def get_date(image):
     for DateTimeOriginal in ExifTags.TAGS.keys():
         if ExifTags.TAGS[DateTimeOriginal] == 'DateTimeOriginal':
             break
 
-    exif = dict(pil_img2._getexif().items())
+    exif = dict(image._getexif().items())
     date = str(exif[DateTimeOriginal])
     my_date = datetime.strptime(date, "%Y:%m:%d %H:%M:%S")
-    printed_date = f'{str(my_date.strftime("%B"))} {str(my_date.year)}'
-    return printed_date
+    # Return date to be printed
+    return f'{str(my_date.strftime("%B"))} {str(my_date.year)}'
 
 
-def add_margin(pil_img, top, right, bottom, left, color):
-    width, height = pil_img.size
+def add_margin(image, top, right, bottom, left, color):
+    width, height = image.size
     new_width = width + right + left
     new_height = height + top + bottom
-    result = Image.new(pil_img.mode, (new_width, new_height), color)
-    result.paste(pil_img, (left, top))
-    return result
+    image_with_margin = Image.new(image.mode, (new_width, new_height), color)
+    image_with_margin.paste(image, (left, top))
+    return image_with_margin
 
 
-def add_caption(pil_img2, caption, desired_caption_font_size, desired_margin):
-    width, height = pil_img2.size
+def add_caption(image, caption, desired_caption_font_size, desired_margin):
+    width, height = image.size
     font = ImageFont.truetype("Avenir.ttc", desired_caption_font_size)
-    draw = ImageDraw.Draw(pil_img2)
+    draw = ImageDraw.Draw(image)
     text_width, text_height = draw.textsize(caption, font=font)
     text_slim_count = 0
     if text_width > width:
@@ -75,23 +70,30 @@ def add_caption(pil_img2, caption, desired_caption_font_size, desired_margin):
             font = ImageFont.truetype("Avenir.ttc", desired_caption_font_size)
             text_width, text_height = draw.textsize(caption, font=font)
 
-        result = draw.text(((width - text_width) / 2, height - (desired_margin - text_slim_count)), caption, (0, 0, 0), font=font)
+        image_with_caption = draw.text(((width - text_width) / 2, height - (desired_margin - text_slim_count)), caption, (0, 0, 0), font=font)
     else:
-        result = draw.text(((width - text_width) / 2, height - desired_margin), caption, (0, 0, 0), font=font)
-    return result
+        image_with_caption = draw.text(((width - text_width) / 2, height - desired_margin), caption, (0, 0, 0), font=font)
+    return image_with_caption
 
 
-def add_date(pil_img2, date, desired_date_y_value, desired_date_font_size):
+def add_date(image, date, desired_date_y_value, desired_date_font_size):
     date = str(date)
-    width, height = pil_img2.size
+    width, height = image.size
     font = ImageFont.truetype("Avenir.ttc", desired_date_font_size)
-    draw = ImageDraw.Draw(pil_img2)
+    draw = ImageDraw.Draw(image)
     text_width, text_height = draw.textsize(date, font=font)
-    result = draw.text(((width - text_width) / 2, height - desired_date_y_value), date, (0, 0, 0), font=font)
-    return result
+    image_with_date = draw.text(((width - text_width) / 2, height - desired_date_y_value), date, (0, 0, 0), font=font)
+    return image_with_date
 
 
 def captioneer():
+    # Configure variables
+    output_dir_name = 'newly_stamped_images'
+    output_dir = Path.cwd() / output_dir_name
+    image_files = []
+    sub_dirs = []
+    process_iteration_counter = 1
+
     for sub_dir in Path.cwd().iterdir():
         if sub_dir.is_dir():
             # Skip over pre-existing newly_stamped_images folder
@@ -106,7 +108,6 @@ def captioneer():
                     if image_type == 'jpeg':
                         image_files.append(filename)
 
-
     total_images = len(image_files)
     print(f'''
     Subdirectories: {len(sub_dirs)}
@@ -117,7 +118,7 @@ def captioneer():
         'Do you wish to stamp these images with Captions and dates? [Y]es/No ')
 
     # Moment to breath before execution, review the total number of files and directories
-    if proceed_question.casefold() == 'no':
+    if proceed_question.casefold() == 'no' or proceed_question.casefold() == 'n':
         exit()
 
     # Capture process start time
@@ -137,7 +138,7 @@ def captioneer():
         try:
             dir_check_make(output_sub_dir, sub_dir.name)
             sub_dir_image_files = []
-        except:
+        except Exception:
             print(f'subdirectory creation failed')
 
         try:
@@ -150,7 +151,7 @@ def captioneer():
 
             for filename in sorted(sub_dir_image_files):
                 try:
-                    im = Image.open(filename)
+                    img = Image.open(filename)
                     print(f'{filename.name}\n{"-" * len(filename.name)}\n'
                           f'{process_iteration_counter} of {total_images}')
                     process_iteration_counter += 1
@@ -159,11 +160,9 @@ def captioneer():
                     print(f'Open image {filename} failed')
 
                 try:
-                    iptc = IptcImagePlugin.getiptcinfo(im)
-                    caption = get_caption()
+                    caption = get_caption(img)
                     print(f'Caption: {caption}')
-                except Exception as e:
-                    #                           print(e)
+                except Exception:
                     caption = sub_dir.name
                     print(
                         f'{"+" * (int((len(str(caption)))/2)-2)} NO IPTC DATA {"+" * (int((len(str(caption)))/2)-2)}\n'
@@ -172,41 +171,39 @@ def captioneer():
                         f'{"+" * ((len(str(caption)))+10)}\n')
 
                 try:
-                    date = get_date(im)
+                    date = get_date(img)
                     print(f'Date: {date}')
-                except Exception as e:
+                except Exception:
                     print(
                         f'------------------------------------------------------------\n'
                         f'-------------------- NO DATE AVAILABLE ---------------------\n'
                         f'------------------------------------------------------------\n')
-                    # print('get_date error: ', e)
                     manual_date = input(
                         f'Manual date entry required!\n'
                         f'Enter date as you wish text to appear on stamped photo\n'
                         f'"Month Year", "January 2021" or "November 1980" (for example)\n'
                         f'Please enter date: ')
                     date = str(manual_date)
-                desired_margin, desired_caption_font_size, desired_date_font_size, desired_date_y_value = get_image_dimensions(
-                    im)
+
+                desired_margin, desired_caption_font_size, desired_date_font_size, desired_date_y_value = get_image_dimensions(img)
 
                 try:
-                    img_new = add_margin(
-                        im, 0, 0, desired_margin, 0, (255, 255, 255))
-                    add_caption(img_new, caption,
-                                desired_caption_font_size, desired_margin)
-                    add_date(img_new, date, desired_date_y_value,
-                             desired_date_font_size)
+                    image_output = add_margin(img, 0, 0, desired_margin, 0, (255, 255, 255))
+                    add_caption(image_output, caption, desired_caption_font_size, desired_margin)
+                    add_date(image_output, date, desired_date_y_value, desired_date_font_size)
                 except Exception as e:
-                    print(f'margin/caption/date failure')
-                    print(e)
+                    print(
+                        f'margin/caption/date failure\n'
+                        f'{e}')
 
                 try:
                     output_filename = f'{filename.stem}-stamped.jpg'
-                    img_new.save(output_sub_dir / output_filename, quality=95)
+                    image_output.save(output_sub_dir / output_filename, quality=95)
                     print('\n')
                 except Exception as e:
-                    print(e)
-                    print(f'Adding border and filename to image {filename} failed')
+                    print(
+                        f'Adding border and filename to image {filename} failed\n'
+                        f'{e}')
         except Exception as e:
             print(e)
             pass
