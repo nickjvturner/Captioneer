@@ -36,11 +36,13 @@ def get_caption(image):
 
 
 def get_date(image):
-    iptc = IptcImagePlugin.getiptcinfo(image)
-    date = iptc.get((2, 55)).decode()
-    print(date)
-    my_date = datetime.strptime(date, "%Y-%m-%d")
-    print(my_date)
+    for DateTimeOriginal in ExifTags.TAGS.keys():
+        if ExifTags.TAGS[DateTimeOriginal] == 'DateTimeOriginal':
+            break
+
+    exif = dict(image._getexif().items())
+    date = str(exif[DateTimeOriginal])
+    my_date = datetime.strptime(date, "%Y:%m:%d %H:%M:%S")
     # Return date to be printed
     return f'{str(my_date.strftime("%B"))} {str(my_date.year)}'
 
@@ -103,7 +105,7 @@ def captioneer():
                     if filename.is_dir():
                         continue
                     image_type = imghdr.what(filename)
-                    if image_type == 'jpeg' or image_type == 'tiff':
+                    if image_type == 'jpeg':
                         image_files.append(filename)
 
     total_images = len(image_files)
@@ -144,7 +146,7 @@ def captioneer():
                 image_type = imghdr.what(filename)
                 # Optionally print identified file type for all files within subDir
                 # print(imageType)
-                if image_type == 'jpeg' or image_type == 'tiff':
+                if image_type == 'jpeg':
                     sub_dir_image_files.append(filename)
 
             for filename in sorted(sub_dir_image_files):
