@@ -56,15 +56,16 @@ def add_caption(image, caption, desired_caption_font_size, desired_margin):
     width, height = image.size
     font = ImageFont.truetype("Avenir.ttc", desired_caption_font_size)
     draw = ImageDraw.Draw(image)
-    text_width, text_height = draw.textsize(caption, font=font)
+    text_width = draw.textlength(caption, font=font)
     text_slim_count = 0
+    print(text_width, width)
     if text_width > width:
-        while text_width > (width - 300):
+        while text_width > (width - (width / 8 )):
             text_slim_count += 1
             print('Text width too great for image, slimming', desired_caption_font_size)
             desired_caption_font_size -= 2
             font = ImageFont.truetype("Avenir.ttc", desired_caption_font_size)
-            text_width, text_height = draw.textsize(caption, font=font)
+            text_width = draw.textlength(caption, font=font)
 
         image_with_caption = draw.text(((width - text_width) / 2, height - (desired_margin - text_slim_count)), caption, (0, 0, 0), font=font)
     else:
@@ -77,7 +78,7 @@ def add_date(image, date, desired_date_y_value, desired_date_font_size):
     width, height = image.size
     font = ImageFont.truetype("Avenir.ttc", desired_date_font_size)
     draw = ImageDraw.Draw(image)
-    text_width, text_height = draw.textsize(date, font=font)
+    text_width = draw.textlength(date, font=font)
     image_with_date = draw.text(((width - text_width) / 2, height - desired_date_y_value), date, (0, 0, 0), font=font)
     return image_with_date
 
