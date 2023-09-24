@@ -38,7 +38,7 @@ def get_caption(image):
 def get_date(image):
     iptc = IptcImagePlugin.getiptcinfo(image)
     date = iptc.get((2, 55)).decode()
-    my_date = datetime.strptime(date, "%Y-%m-%d")
+    my_date = datetime.strptime(date, "%Y%m%d")
     # Return date to be printed
     return f'{str(my_date.strftime("%B"))} {str(my_date.year)}'
 
